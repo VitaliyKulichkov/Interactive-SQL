@@ -90,3 +90,17 @@ group by author
 1.3.6
 select min(price) as Минимальная_цена, max(price) as Максимальная_цена, round(avg(price), 2) as Средняя_цена
 from book
+
+1.3.7
+select round(avg(price), 2) as Средняя_цена, round(sum(price*amount), 2) as Стоимость
+from book
+where amount between 5 and 14
+
+1.3.8
+select author, sum(price*amount) as Стоимость
+from book
+where title not in ("Идиот", "Белая гвардия")
+group by author
+having sum(price*amount) > 5000
+order by Стоимость desc
+
