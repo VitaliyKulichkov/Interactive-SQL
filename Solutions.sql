@@ -104,3 +104,197 @@ group by author
 having sum(price*amount) > 5000
 order by Стоимость desc
 
+1.4.2
+select author, title, price
+from book
+where price<=(select avg(price) from book)
+order by price desc
+
+1.4.3
+select author, title, price
+from book
+where price - (select min(price) from book) <= 150
+order by price asc
+
+1.4.4
+select author, title, amount
+from book
+where amount in (select amount from book group by amount having count(amount)=1)
+
+1.4.5
+select author, title, price
+from book
+where price < ANY (
+    select MIN(price)
+    from book
+    group by author
+)
+
+1.4.6
+select title, author, amount, (select max(amount) from book) - amount as Заказ
+from book
+having Заказ > 0
+
+1.5.2
+create table supply(supply_id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(50), author VARCHAR(30), price DECIMAL(8, 2), amount INT)
+
+1.5.3
+insert into supply(supply_id, title, author, price, amount) values (1, 'Лирика', 'Пастернак Б.Л.', 518.99, 2);
+insert into supply(supply_id, title, author, price, amount) values (2, 'Черный человек', 'Есенин С.А.', 570.20, 6);
+insert into supply(supply_id, title, author, price, amount) values (3, 'Белая гвардия', 'Булгаков М.А.', 540.50, 7);
+insert into supply(supply_id, title, author, price, amount) values (4, 'Идиот', 'Достоевский Ф.М.', 360.80, 3);
+
+1.5.4
+insert into book (title, author, price, amount)
+select title, author, price, amount
+from supply
+where author not in ('Булгаков М.А.', 'Достоевский Ф.М.')
+
+1.5.5
+insert into book (title, author, price, amount)
+select title, author, price, amount
+from supply
+where author not in (select distinct author from book)
+
+1.5.6
+update book set price = 0.9*price
+where amount between 5 and 10
+
+1.5.7
+update book set buy = if(buy > amount, amount, buy),
+                price = if(buy = 0, price * 0.9, price);
+
+1.5.8
+update book, supply set book.amount=supply.amount+book.amount, book.price=(book.price+supply.price)/2
+where book.title=supply.title
+
+1.5.9
+delete from supply
+where author in (
+  select author
+  from book
+  group by author
+  having sum(amount) > 10
+)
+
+1.5.10
+create table ordering as
+select author, title, (select avg(amount) from book) as amount
+from book
+where amount<(select avg(amount) from book);
+
+1.6.2
+select name, city, per_diem, date_first, date_last
+from trip
+where name like '%а %.'
+order by date_last desc
+
+1.6.3
+select distinct name from trip
+where city='Москва'
+order by name
+
+1.6.4
+select city, count(*) as Количество
+from trip
+group by city
+order by city
+
+1.6.5
+select city, count(*) as Количество
+from trip
+group by city
+order by Количество desc
+limit 2
+
+1.6.6
+select name, city, datediff(date_last, date_first)+1 as Длительность
+from trip
+where city not in ('Москва', "Санкт-Петербург")
+order by Длительность desc, city desc
+
+1.6.7
+select name, city, date_first, date_last
+from trip
+where DATEDIFF(date_last, date_first) = (
+    select MIN(DATEDIFF(date_last, date_first))
+    from trip
+)
+
+1.6.8
+select name, city, date_first, date_last
+from trip
+where month(date_last)=month(date_first)
+order by city, name
+
+1.6.9
+select MONTHNAME(date_first) as Месяц, count(*) as Количество
+from trip
+group by Месяц
+order by Количество desc, Месяц
+
+1.6.10
+select name, city, date_first, per_diem*(datediff(date_last, date_first)+1) as Сумма
+from trip
+where month(date_first) in (2, 3)
+order by name, Сумма desc
+
+1.6.11
+select name, sum((datediff(date_last, date_first)+1)*per_diem) as Сумма
+from trip
+group by name
+having count(*) > 3
+order by 2 desc
+
+1.7.2
+create table fine(fine_id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(30), number_plate VARCHAR(6),
+                 violation VARCHAR(50), sum_fine DECIMAL(8,2), date_violation DATE, date_payment DATE)
+
+1.7.3
+insert into fine(fine_id, name, number_plate, violation, sum_fine, date_violation, date_payment)
+           values(6, "Баранов П.Е.", 'Р523ВТ', 'Превышение скорости(от 40 до 60)', Null, '2020-02-14', Null);
+insert into fine(fine_id, name, number_plate, violation, sum_fine, date_violation, date_payment)
+           values(7, "Абрамова К.А.", 'О111АВ', 'Проезд на запрещающий сигнал', Null, '2020-02-23', Null);
+insert into fine(fine_id, name, number_plate, violation, sum_fine, date_violation, date_payment)
+           values(8, "Яковлев Г.Р.", 'Т330ТТ', 'Проезд на запрещающий сигнал', Null, '2020-03-03', Null);
+
+1.7.4
+Update fine as f, traffic_violation as tv
+set f.sum_fine=tv.sum_fine
+where f.violation=tv.violation and f.sum_fine is null
+
+1.7.5
+select name, number_plate, violation
+from fine
+group by name, number_plate, violation
+having count(*) > 1
+order by name
+
+1.7.6
+update fine, (select name, number_plate, violation
+from fine
+group by name, number_plate, violation
+having count(*) > 1
+order by name) as new_fine
+set fine.sum_fine=fine.sum_fine*2
+where date_payment is null and
+           new_fine.name=fine.name and
+           new_fine.number_plate=fine.number_plate and
+           new_fine.violation=fine.violation
+
+1.7.7
+update fine, payment
+set fine.date_payment=payment.date_payment,
+fine.sum_fine=if(datediff(payment.date_payment, fine.date_violation) <= 20, fine.sum_fine/2, fine.sum_fine)
+where fine.name=payment.name and
+fine.number_plate=payment.number_plate and
+fine.violation=payment.violation and
+fine.date_payment is null
+
+1.7.8
+create table back_payment as (select name, number_plate, violation, sum_fine, date_violation from fine
+where date_payment is null)
+
+1.7.9
+delete from fine
+where date_violation < '2020-02-01'
