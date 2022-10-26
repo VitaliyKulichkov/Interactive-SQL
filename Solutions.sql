@@ -298,3 +298,102 @@ where date_payment is null)
 1.7.9
 delete from fine
 where date_violation < '2020-02-01'
+
+Глава 2. Запросы SQL к связанным таблицам
+
+2.1.6
+create table author (author_id INT PRIMARY KEY AUTO_INCREMENT, name_author VARCHAR(50))
+
+2.1.7
+insert into author(author_id, name_author)
+values
+(1, 'Булгаков М.А.'),
+(2, 'Достоевский Ф.М.'),
+(3, 'Есенин С.А.'),
+(4, 'Пастернак Б.Л.')
+
+2.1.8
+CREATE TABLE book (
+      book_id INT PRIMARY KEY AUTO_INCREMENT,
+      title VARCHAR(50),
+      author_id INT NOT NULL,
+      genre_id INT,
+      price DECIMAL(8,2),
+      amount INT,
+      FOREIGN KEY (author_id)  REFERENCES author (author_id),
+      FOREIGN KEY (genre_id)  REFERENCES genre (genre_id)
+)
+
+2.1.9
+CREATE TABLE book (
+      book_id INT PRIMARY KEY AUTO_INCREMENT,
+      title VARCHAR(50),
+      author_id INT,
+    genre_id INT,
+      price DECIMAL(8,2),
+      amount INT,
+      FOREIGN KEY (author_id)  REFERENCES author (author_id) ON DELETE CASCADE,
+      FOREIGN KEY (genre_id)  REFERENCES genre (genre_id) ON DELETE set null
+)
+
+2.1.11
+insert into book (book_id, title, author_id, genre_id, price, amount)
+values
+    (6, "Стихотворения и поэмы", 3, 2, 650.00, 15),
+    (7, "Черный человек", 3, 2, 570.20, 6),
+    (8, "Лирика", 4, 2, 518.99, 2)
+
+2.2.2
+select title, name_genre, price
+from book
+inner join genre
+on genre.genre_id=book.genre_id
+where amount > 8
+order by price desc
+
+2.2.3
+select name_genre from genre
+left join book
+on book.genre_id=genre.genre_id
+where amount is null
+
+2.2.4
+select name_city, name_author, date_add('2020-01-01', interval 'FLOOR(RAND()*365)' day) as Дата
+from author
+cross join city
+
+2.2.5
+select name_genre, title, name_author
+from book
+inner join author
+on book.author_id=author.author_id
+inner join genre
+on book.genre_id=genre.genre_id
+where name_genre='Роман'
+order by title
+
+2.2.6
+select name_author, sum(amount) as Количество
+from author
+left join book on author.author_id=book.author_id
+group by name_author
+having sum(amount) < 10 or Количество is null
+order by Количество
+
+2.2.7
+SELECT book.title, author.name_author, genre.name_genre, book.price, book.amount
+FROM book INNER JOIN author ON book.author_id = author.author_id INNER JOIN genre ON book.genre_id = genre.genre_id
+WHERE book.genre_id IN (
+    SELECT genre_id
+    FROM book
+    GROUP BY genre_id
+    HAVING SUM(amount) = (
+        SELECT MAX(sum_amount)
+        FROM (
+            SELECT SUM(amount) sum_amount
+            FROM book
+            GROUP BY genre_id
+        ) max_amount
+    )
+)
+ORDER BY book.title;
